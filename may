@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hiring Funnel — BeeX</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #f7f7f5;
+    --text: #1f1f1d;
+    --muted: #6b6b66;
+    --hint: #9a9a94;
+    --border: rgba(0,0,0,0.10);
+    --bar0: #CECBF6; --bar1: #AFA9EC; --bar2: #7F77DD; --bar3: #6358CE;
+    --bar4: #534AB7; --bar5: #473DA0; --bar6: #3C3489; --bar7: #26215C;
+    --barText: #26215C;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18; --surface: #232321; --text: #ececea; --muted: #a7a7a1;
+      --hint: #7a7a74; --border: rgba(255,255,255,0.12); --barText: #ffffff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text);
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    margin-bottom: 20px;
+  }
+  label { font-size: 13px; color: var(--muted); }
+  select {
+    height: 36px; padding: 0 10px; font-size: 14px;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); color: var(--text); min-width: 220px;
+  }
+  h1 { font-size: 18px; font-weight: 500; margin: 0 0 2px; }
+  .sub { font-size: 13px; color: var(--muted); margin: 0 0 18px; }
+  .row { display: flex; align-items: center; gap: 12px; margin-bottom: 7px; }
+  .lab { width: 150px; font-size: 13px; color: var(--muted); text-align: right; flex-shrink: 0; }
+  .track { flex: 1; display: flex; align-items: center; gap: 8px; }
+  .bar {
+    height: 34px; border-radius: 8px; display: flex; align-items: center;
+    padding: 0 12px; color: var(--barText); font-size: 14px; font-weight: 500;
+    min-width: 34px; transition: width .3s ease; white-space: nowrap;
+  }
+  .conv { font-size: 12px; color: var(--hint); white-space: nowrap; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 10px; margin-top: 22px; }
+  .stat { background: var(--surface); border-radius: 8px; padding: 12px 14px; }
+  .stat .k { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .stat .v { font-size: 22px; font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="controls">
+    <label for="pos">Position</label>
+    <select id="pos"></select>
+  </div>
+  <h1 id="title">Combined funnel</h1>
+  <p class="sub" id="sub">June 2026 — all positions</p>
+  <div id="funnel"></div>
+  <div class="stats">
+    <div class="stat"><div class="k">Overall yield (offer ÷ applied)</div><div class="v" id="yield">—</div></div>
+    <div class="stat"><div class="k">Biggest drop-off</div><div class="v" id="bigdrop" style="font-size:15px;line-height:1.4;">—</div></div>
+  </div>
+</div>
+
+<script>
+const stageLabels = ["Applied","Resume Screened","Reached Out","HR Interview","Technical Assignment","Technical Interview","Culture Fit","Offered"];
+const barVars = ["--bar0","--bar1","--bar2","--bar3","--bar4","--bar5","--bar6","--bar7"];
+
+// Per-position data: [Applied, Screened, ReachedOut, HRInterview, TechAssignment, TechInterview, CultureFit, Offered]
+const data = {
+  "Mechatronics Engineer":      [23,23,2,3,2,0,0,0],
+  "Mechanical Engineer":        [5,5,2,0,0,0,0,0],
+  "Electrical Engineer":        [46,45,11,9,7,2,0,1],
+  "Robotics Automation (RASE)": [15,9,3,5,3,0,0,0],
+  "Research Fellow (RF)":       [11,11,3,3,2,0,0,0],
+  "Sales Engineer":             [16,16,5,2,1,1,1,1],
+  "Sales Engineer (MV)":        [31,31,10,7,4,null,null,null],
+  "Project Engineer (Defense)": [30,28,7,2,2,1,0,1],
+  "Operations Tech (Ops)":      [93,91,13,8,5,0,0,0],
+  "Production Tech (Prod)":     [86,84,23,11,5,0,0,1],
+  "Business Ops Intern":        [8,8,5,2,0,1,0,0],
+  "Industrial Design Intern":   [8,8,3,2,0,0,0,0],
+  "Electrical Intern":          [11,0,0,0,0,0,0,0],
+  "Mechanical Intern":          [21,21,6,1,0,0,0,0],
+  "Software Intern":            [15,15,5,1,0,0,0,0],
+  "PM Intern":                  [5,5,1,1,1,1,0,1]
+};
+
+function combined() {
+  const sum = [0,0,0,0,0,0,0,0];
+  for (const k in data) {
+    data[k].forEach((v,i)=> {
+      if (v !== null) sum[i] += v;
+    });
+  }
+  return sum;
+}
+
+function render(vals, name) {
+  const max = Math.max(...vals.filter(v => v !== null), 1);
+  const f = document.getElementById("funnel");
+  f.innerHTML = "";
+  vals.forEach((v,i) => {
+    if (v === null) return;
+    const pct = (v/max)*100;
+    const prev = i===0 ? null : vals.slice(0,i).reverse().find(x => x !== null);
+    const conv = prev ? Math.round((v/prev)*100) : null;
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML =
+      '<div class="lab">'+stageLabels[i]+'</div>'+
+      '<div class="track">'+
+        '<div class="bar" style="width:'+Math.max(pct,3)+'%;background:var('+barVars[i]+');">'+v+'</div>'+
+        (conv!==null ? '<span class="conv">'+conv+'%</span>' : '<span class="conv">—</span>')+
+      '</div>';
+    f.appendChild(row);
+  });
+  const applied = vals[0];
+  const offer = vals.slice().reverse().find(x => x !== null);
+  document.getElementById("yield").textContent = applied ? ((offer/applied)*100).toFixed(1)+"%" : "—";
+  let worst = {d:-1, lab:""};
+  for (let i=1;i<vals.length;i++){
+    if (vals[i-1] !== null && vals[i-1]>0){
+      const next = vals.slice(i).find(x => x !== null);
+      if (next !== null && next !== undefined) {
+        const dpct = Math.round(((vals[i-1]-next)/vals[i-1])*100);
+        if (dpct>worst.d) worst = {d:dpct, lab:stageLabels[i-1]+" → "+stageLabels[i]};
+      }
+    }
+  }
+  document.getElementById("bigdrop").textContent = worst.lab ? worst.lab+" (−"+worst.d+"%)" : "—";
+  document.getElementById("title").textContent = name === "__all__" ? "Combined funnel" : name;
+  document.getElementById("sub").textContent = "June 2026 — " + (name === "__all__" ? "all positions" : name);
+}
+
+const sel = document.getElementById("pos");
+sel.innerHTML = '<option value="__all__">All positions (combined)</option>' +
+  Object.keys(data).map(k => '<option value="'+k+'">'+k+'</option>').join("");
+sel.addEventListener("change", e => {
+  const v = e.target.value;
+  render(v === "__all__" ? combined() : data[v], v);
+});
+
+render(combined(), "__all__");
+</script>
+</body>
+</html>
