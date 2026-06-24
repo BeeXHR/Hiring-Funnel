@@ -83,7 +83,6 @@ const data = {
   "Robotics Autonomy Software Engineer (RASE)": [30,30,8,4,4,0,0,0],
   "Research Fellow (RF)":       [2,2,1,1,0,0,0,0],
   "Sales Engineer":             [20,20,8,12,10,2,1,0],
-  "Sales Engineer (MY)":        [31,31,10,7,4,0,0,0],
   "Project Engineer (Defense)": [27,27,11,6,3,2,1,0],
   "Operations Tech (Ops)":      [64,64,9,6,2,2,0,0],
   "Production Tech (Prod)":     [59,49,0,0,0,0,0,0],
@@ -144,7 +143,7 @@ function render(vals, name) {
 
 const sel = document.getElementById("pos");
 sel.innerHTML = '<option value="__all__">All positions (combined)</option>' +
-  Object.keys(data).map(k => '<option value="'+k+'">'+k+'</option>').join("");
+  Object.keys(data).map(k => '<option value="'+k+'">'+k+'<\/option>').join("");
 sel.addEventListener("change", e => {
   const v = e.target.value;
   render(v === "__all__" ? combined() : data[v], v);
